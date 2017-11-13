@@ -42,9 +42,10 @@ public:
         setCurrentPlaybackSampleRate (spec.sampleRate);
 
         for (auto* v : voices)
-            dynamic_cast<Voice*> (v)->prepare (spec);
+            dynamic_cast<Voice*> (v)->prepare (spec);  
 
             // <- 6.3. prepare the fxChain
+            fxChain.prepare(spec);
     }
 
 private:
@@ -54,17 +55,29 @@ private:
         MPESynthesiser::renderNextSubBlock (outputAudio, startSample, numSamples);
 
             // <- 6.4. wrap outputAudio in a juce::dsp::AudioBlock
+        auto audioBlock = juce::dsp::AudioBlock<float>(outputAudio);
             // <- 6.5. create another juce::dsp::AudioBlock which refers to the section
             //         of the previous block defined by startSample and numSamples
+        auto blockToUse = audioBlock.getSubBlock ((size_t) startSample, (size_t) numSamples);
             // <- 6.6. wrap the above AudioBlock in a juce::dsp::ProcessContextReplacing
+        auto contextToUse = juce::dsp::ProcessContextReplacing<float>(blockToUse);
             // <- 6.7. process the fxChain with the above context
+        fxChain.process(contextToUse);
     }
 
     // enum
     // {
             // <- 6.2. add Reverb index
     // };
+    
+    enum
+    {
+        reverbIndex
+    };
 
+    juce::dsp::ProcessorChain<
+        juce::dsp::Reverb
+    > fxChain;
     // juce::dsp::ProcessorChain<
             // <- 6.1. add juce::dsp::Reverb
     // > fxChain;

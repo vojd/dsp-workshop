@@ -31,11 +31,18 @@ public:
         masterGain.setGainLinear (0.7f);
 
             // <- 4.3. get a reference to the filter with processorChain.get<>()
+        auto& ladderFilter = processorChain.get<filterIndex>();
             // <- 4.4. set the cutoff frequency of the filter to 1 kHz
+        ladderFilter.setCutoffFrequencyHz(1000.0f);
             // <- 4.5. set the resonance of the filter to 0.7
+        ladderFilter.setResonance(0.7f);
 
-            // <- 5.2. initialise the lfo with a sine wave
-            // <- 5.3. change the lfo frequency to 3 Hz
+        // <- 5.2. initialise the lfo with a sine wave
+        lfo.initialise([] (float x) {
+            return std::sin(x);
+        }, 128 );
+        // <- 5.3. change the lfo frequency to 3 Hz
+        lfo.setFrequency(3.f);
     }
 
     //==============================================================================
@@ -44,7 +51,10 @@ public:
         tempBlock = juce::dsp::AudioBlock<float> (heapBlock, spec.numChannels, spec.maximumBlockSize);
         processorChain.prepare (spec);
 
-            // <- 5.4. set the sample rate of the lfo to spec.sampleRate / lfoUpdateRate
+        // <- 5.4. set the sample rate of the lfo to spec.sampleRate / lfoUpdateRate
+        juce::dsp::ProcessSpec mod_spec = spec;
+        mod_spec.sampleRate = spec.sampleRate / lfoUpdateRate;
+        lfo.prepare(mod_spec);
     }
 
     //==============================================================================
@@ -90,7 +100,17 @@ public:
     {
             // <- 5.5. call processSample() on the lfo once per lfoUpdateRate input
             //         samples (use lfoUpdateCounter)
-
+        for (int i = 0; i < numSamples; ++i)
+        {
+            if (--lfoUpdateCounter == 0)
+            {
+                lfoUpdateCounter = lfoUpdateRate;
+                const auto lfoOut = lfo.processSample (0.0f);
+                
+                const auto cutoffFreqHz = jmap (lfoOut, -1.0f, 1.0f, 1e2f, 2e3f);
+                processorChain.get<filterIndex>().setCutoffFrequencyHz (cutoffFreqHz);
+            }
+        }
             // <- 5.6. use the output of lfo.processSample() to change the cutoff
             //         frequency of the filter between 100 Hz and 2 kHz
 
@@ -112,21 +132,27 @@ private:
     enum
     {
         osc1Index,
+        // <- 3.2. add index for the second Oscillator
         osc2Index,
-                        // <- 3.2. add index for the second Oscillator
-                        // <- 4.2. add index for the Filter
+        // <- 4.2. add index for the Filter
+        filterIndex,
         masterGainIndex
     };
 
     juce::dsp::ProcessorChain<
         Oscillator<float>,
+            // <- 3.1. add a second Oscillator
         Oscillator<float>,
-                        // <- 3.1. add a second Oscillator
-                        // <- 4.1. add a juce::dsp::LadderFilter
+    
+            // <- 4.1. add a juce::dsp::LadderFilter
+        juce::dsp::LadderFilter<float>,
         juce::dsp::Gain<float>
     > processorChain;
 
     static constexpr size_t lfoUpdateRate = 100;
     size_t lfoUpdateCounter = lfoUpdateRate;
-                        // <- 5.1. declare a juce::dsp::Oscillator named lfo
+    // <- 5.1. declare a juce::dsp::Oscillator named lfo
+    juce::dsp::Oscillator<float> lfo;
+    
+    
 };
