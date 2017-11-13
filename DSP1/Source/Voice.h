@@ -57,7 +57,10 @@ public:
         processorChain.get<osc1Index>().setLevel (velocity);
 
             // <- 3.3. set the frequency of the second oscillator to 1.01 * freqHz
+        //processorChain.get<osc2Index>().setFrequency(1.01f * freqHz, true);
+        processorChain.get<osc2Index>().setFrequency(velocity * freqHz, true);
             // <- 3.4. set the level of the second oscillator
+        processorChain.get<osc2Index>().setLevel(velocity);
     }
 
     //==============================================================================
@@ -67,6 +70,7 @@ public:
         processorChain.get<osc1Index>().setFrequency (freqHz);
 
             // <- 3.5. set the frequency of the second oscillator to 1.01 * freqHz
+        processorChain.get<osc2Index>().setFrequency (freqHz);
     }
 
     //==============================================================================
@@ -108,12 +112,14 @@ private:
     enum
     {
         osc1Index,
+        osc2Index,
                         // <- 3.2. add index for the second Oscillator
                         // <- 4.2. add index for the Filter
         masterGainIndex
     };
 
     juce::dsp::ProcessorChain<
+        Oscillator<float>,
         Oscillator<float>,
                         // <- 3.1. add a second Oscillator
                         // <- 4.1. add a juce::dsp::LadderFilter
